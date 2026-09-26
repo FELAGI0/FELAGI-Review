@@ -18,3 +18,7 @@ build/
 !.env.example
 .DS_Store
 Thumbs.db
+
+backend/reviewhub_backend.egg-info/
+frontend/tsconfig.tsbuildinfo
+
