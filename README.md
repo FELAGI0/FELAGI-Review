@@ -1,7 +1,7 @@
-# ReviewHub — Code Review as a Service
+# FELAGI-Review
+> Your code deserves a felagi.
 
-Phase 1 foundation of a team code-review platform with an AI reviewer, GitHub integration,
-inline discussions and gamification.
+AI-powered code review platform for dev teams.
 
 ## Status
 

@@ -1,55 +1,63 @@
-name: reviewhub
+name: felagi-review
 
 services:
-  db:
+  felagi-db:
     image: pgvector/pgvector:pg16
+    container_name: felagi-db
     environment:
-      POSTGRES_USER: reviewhub
-      POSTGRES_PASSWORD: reviewhub
-      POSTGRES_DB: reviewhub
+      POSTGRES_USER: felagi
+      POSTGRES_PASSWORD: felagi
+      POSTGRES_DB: felagi_review
     ports:
-      - "5432:5432"
+      - "55432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - felagi_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U reviewhub"]
+      test: ["CMD-SHELL", "pg_isready -U felagi"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  redis:
+  felagi-redis:
     image: redis:7-alpine
+    container_name: felagi-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
+    volumes:
+      - felagi_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
 
-  backend:
+  felagi-backend:
     build: ./backend
+    container_name: felagi-backend
     environment:
-      DATABASE_URL: postgresql+asyncpg://reviewhub:reviewhub@db:5432/reviewhub
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: change-me
+      FELAGI_APP_ENV: ${FELAGI_APP_ENV:-development}
+      FELAGI_JWT_SECRET: ${FELAGI_JWT_SECRET:-change-me}
+      DATABASE_URL: postgresql+asyncpg://felagi:felagi@felagi-db:5432/felagi_review
+      REDIS_URL: redis://felagi-redis:6379/0
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     depends_on:
-      db:
+      felagi-db:
         condition: service_healthy
-      redis:
+      felagi-redis:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "8080:8000"
 
-  frontend:
+  felagi-frontend:
     build: ./frontend
+    container_name: felagi-frontend
     ports:
-      - "5173:80"
+      - "5174:80"
     depends_on:
-      - backend
+      - felagi-backend
 
 volumes:
-  pgdata:
+  felagi_pg_data:
+  felagi_redis_data:

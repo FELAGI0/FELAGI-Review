@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from app.config import settings
+from app.core.config import settings
 from app.security import get_current_user
 
 router = APIRouter()

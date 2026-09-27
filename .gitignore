@@ -19,6 +19,6 @@ build/
 .DS_Store
 Thumbs.db
 
-backend/reviewhub_backend.egg-info/
+backend/*.egg-info/
 frontend/tsconfig.tsbuildinfo
 

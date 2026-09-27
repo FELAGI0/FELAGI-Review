@@ -8,18 +8,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import auth, health
-from app.config import settings
+from app.core.config import settings
 from app.logging import logger
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
-    logger.info("startup", app=settings.app_name, env=settings.app_env)
+    logger.info("startup", service=settings.service_name, env=settings.app_env)
     yield
 
 
 app = FastAPI(
-    title=settings.app_name,
+    title="FELAGI-Review API",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -37,11 +37,13 @@ app.add_middleware(
 async def request_context(request: Request, call_next):
     request_id = request.headers.get("X-Request-ID", str(uuid4()))
     request.state.request_id = request_id
-    structlog.contextvars.bind_contextvars(request_id=request_id)
+    structlog.contextvars.bind_contextvars(
+        service=settings.service_name, request_id=request_id
+    )
     try:
         response = await call_next(request)
     finally:
-        structlog.contextvars.unbind_contextvars("request_id")
+        structlog.contextvars.unbind_contextvars("request_id", "service")
     response.headers["X-Request-ID"] = request_id
     return response
 
