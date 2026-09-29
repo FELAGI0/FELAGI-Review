@@ -42,3 +42,7 @@ select = ["E", "F", "I", "UP", "B", "ASYNC"]
 ignore = ["B008"]
 [tool.setuptools]
 packages = ["app", "app.api", "app.core", "app.db", "app.models", "app.schemas", "app.services", "app.ai", "app.ai.providers", "app.tests"]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/versions/*" = ["E501", "I001", "UP007", "UP035"]
+

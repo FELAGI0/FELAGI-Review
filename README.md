@@ -51,3 +51,12 @@ Copy `.env.example` to `.env` before starting GitHub OAuth integration.
 - Backend: FastAPI, SQLAlchemy 2.0 (async), PostgreSQL 16 + pgvector, Redis
 - Frontend: React 18, TypeScript, Vite, TanStack Query, Zustand
 - Infrastructure: Docker Compose, GitHub OAuth/App webhooks
+## Database migrations
+
+Run migrations from the `backend` directory:
+
+```powershell
+alembic revision --autogenerate -m "message"
+alembic upgrade head
+alembic downgrade -1
+```
