@@ -14,7 +14,7 @@ from app.logging import logger
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
-    logger.info("startup", service=settings.service_name, env=settings.app_env)
+    logger.info("startup", service=settings.service_name, env=settings.environment)
     yield
 
 
