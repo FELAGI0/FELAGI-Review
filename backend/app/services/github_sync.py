@@ -238,10 +238,21 @@ async def sync_all_installations(db: AsyncSession) -> dict[str, int]:
             org_name = account.get("login") or "default"
             org = await _get_or_create_org(db, org_name)
 
+            try:
+                installation_token = await app_client.get_installation_token(
+                    installation_id
+                )
+            except GitHubAppError as exc:
+                logger.warning(
+                    "installation_token_failed",
+                    installation_id=installation_id,
+                    error=str(exc),
+                )
+                continue
+            install_headers = {"Authorization": f"Bearer {installation_token}"}
             repos_response = await client.get(
-                f"{settings.github_api_base_url}/app/installations/"
-                f"{installation_id}/repositories",
-                headers=headers,
+                f"{settings.github_api_base_url}/installation/repositories",
+                headers=install_headers,
                 timeout=15.0,
             )
             if repos_response.status_code != 200:
