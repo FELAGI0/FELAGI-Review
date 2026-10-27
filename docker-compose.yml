@@ -34,14 +34,12 @@ services:
   felagi-backend:
     build: ./backend
     container_name: felagi-backend
+    env_file:
+      - .env
     environment:
       FELAGI_APP_ENV: ${FELAGI_APP_ENV:-development}
-      FELAGI_JWT_SECRET: ${FELAGI_JWT_SECRET:-change-me}
       DATABASE_URL: postgresql+asyncpg://felagi:felagi@felagi-db:5432/felagi_review
       REDIS_URL: redis://felagi-redis:6379/0
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     depends_on:
       felagi-db:
         condition: service_healthy
