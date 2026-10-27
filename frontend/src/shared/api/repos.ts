@@ -65,6 +65,16 @@ export async function fetchAppInstallUrl(): Promise<string> {
   return data.install_url
 }
 
+export async function syncInstallations(): Promise<{
+  installations: number
+  repositories: number
+}> {
+  const { data } = await api.post<{ installations: number; repositories: number }>(
+    '/github-app/sync',
+  )
+  return data
+}
+
 export async function fetchPullRequests(
   repoId: string,
   state?: 'open' | 'closed' | 'merged' | null,

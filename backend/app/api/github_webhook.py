@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.logging import logger
 from app.services.github_app import GitHubAppClient, WebhookSignatureError
-from app.services.github_sync import sync_installation_repos, sync_pull_request
+from app.services.github_sync import (
+    sync_installation_repos,
+    sync_pull_request,
+    sync_repositories_added,
+)
 
 router = APIRouter()
 
@@ -47,6 +51,10 @@ async def github_webhook(
 
     if event == "installation" and action == "created":
         saved = await sync_installation_repos(db, payload)
+        return {"ok": True, "event": event, "repositories": len(saved)}
+
+    if event == "installation_repositories" and action == "added":
+        saved = await sync_repositories_added(db, payload)
         return {"ok": True, "event": event, "repositories": len(saved)}
 
     if event == "pull_request" and action in PR_ACTIONS:

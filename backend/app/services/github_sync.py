@@ -52,6 +52,48 @@ async def sync_installation_repos(db: AsyncSession, payload: dict[str, Any]) -> 
     return saved
 
 
+async def sync_repositories_added(db: AsyncSession, payload: dict[str, Any]) -> list[Repository]:
+    """Save repositories added to an existing installation (event installation_repositories)."""
+    installation_id = _installation_id(payload)
+    repositories = payload.get("repositories_added") or []
+    if not installation_id or not repositories:
+        return []
+
+    result = await db.execute(
+        select(Repository).where(Repository.installation_id == installation_id).limit(1)
+    )
+    existing = result.scalar_one_or_none()
+    if existing is not None:
+        org_id = existing.org_id
+    else:
+        sender = payload.get("sender") or {}
+        org_name = sender.get("login") or "default"
+        org = await _get_or_create_org(db, org_name)
+        org_id = org.id
+
+    saved: list[Repository] = []
+    for repo in repositories:
+        github_id = repo.get("id")
+        if github_id is None:
+            continue
+        repository = await _upsert_repository(db, org_id, github_id, repo, installation_id)
+        saved.append(repository)
+    await db.commit()
+    logger.info(
+        "repositories_added_synced",
+        installation_id=installation_id,
+        repos=[r.full_name for r in saved],
+    )
+    return saved
+    logger.info(
+        "installation_repos_synced",
+        org=org_name,
+        installation_id=installation_id,
+        repos=[r.full_name for r in saved],
+    )
+    return saved
+
+
 async def sync_pull_request(db: AsyncSession, payload: dict[str, Any]) -> PullRequest | None:
     """Create or update a pull_requests row from a webhook payload."""
     repo = payload.get("repository") or {}
@@ -162,3 +204,59 @@ async def _upsert_repository(
         repository.full_name = full_name
     await db.flush()
     return repository
+
+
+async def sync_all_installations(db: AsyncSession) -> dict[str, int]:
+    """Manual sync: list installations and their repositories from the GitHub API."""
+    import httpx
+
+    from app.core.config import settings
+    from app.services.github_app import GitHubAppClient, GitHubAppError
+
+    app_client = GitHubAppClient()
+    if not app_client.configured:
+        raise GitHubAppError("GitHub App is not configured")
+
+    app_jwt = app_client.create_app_jwt()
+    headers = {"Authorization": f"Bearer {app_jwt}"}
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{settings.github_api_base_url}/app/installations",
+            headers=headers,
+            timeout=15.0,
+        )
+        if response.status_code != 200:
+            raise GitHubAppError(
+                f"Installations request failed: {response.status_code} {response.text}"
+            )
+        installations = response.json()
+
+        total_saved = 0
+        for installation in installations:
+            installation_id = installation["id"]
+            account = installation.get("account") or {}
+            org_name = account.get("login") or "default"
+            org = await _get_or_create_org(db, org_name)
+
+            repos_response = await client.get(
+                f"{settings.github_api_base_url}/app/installations/"
+                f"{installation_id}/repositories",
+                headers=headers,
+                timeout=15.0,
+            )
+            if repos_response.status_code != 200:
+                logger.warning(
+                    "installation_repos_failed",
+                    installation_id=installation_id,
+                    status=repos_response.status_code,
+                )
+                continue
+            repos = repos_response.json().get("repositories", [])
+            for repo in repos:
+                await _upsert_repository(
+                    db, org.id, repo["id"], repo, installation_id
+                )
+                total_saved += 1
+        await db.commit()
+    logger.info("manual_sync_completed", installations=len(installations), repos=total_saved)
+    return {"installations": len(installations), "repositories": total_saved}

@@ -197,6 +197,39 @@ async def test_installation_created_syncs_repositories(
     assert repo_one.org_id == org.id
 
 
+async def test_repositories_added_event_syncs(
+    client: TestClient, webhook_secret: str, db_session, test_user, cleanup
+) -> None:
+    payload = {
+        "action": "added",
+        "installation": {
+            "id": 56_000_000 + int(RUN[:6], 16),
+            "account": {"login": f"sync-{RUN}"},
+        },
+        "repositories_added": [
+            {"id": 200_000_001 + int(RUN[:6], 16), "name": "repo-three",
+             "full_name": f"sync-{RUN}/repo-three"},
+        ],
+        "sender": {"login": "someuser"},
+    }
+    response = _post_webhook(client, "installation_repositories", payload, webhook_secret)
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": True,
+        "event": "installation_repositories",
+        "repositories": 1,
+    }
+
+    result = await db_session.execute(
+        select(Repository).where(
+            Repository.github_id == payload["repositories_added"][0]["id"]
+        )
+    )
+    repo = result.scalar_one()
+    assert repo.full_name == f"sync-{RUN}/repo-three"
+    assert repo.installation_id == payload["installation"]["id"]
+
+
 async def test_pull_request_webhook_creates_record(
     client: TestClient, webhook_secret: str, db_session, test_user, cleanup
 ) -> None:

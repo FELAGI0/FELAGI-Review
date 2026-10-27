@@ -14,6 +14,7 @@ from app.models.base import PRState
 from app.security import get_current_user
 from app.services.diff_parser import parse_diff
 from app.services.github_app import GitHubAppClient, GitHubAppError
+from app.services.github_sync import sync_all_installations
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
@@ -170,3 +171,11 @@ async def github_app_install_url() -> dict:
     if not settings.github_app_id:
         raise HTTPException(status_code=503, detail="GitHub App is not configured")
     return {"install_url": "https://github.com/apps/felagi-review-app/installations/new"}
+
+
+@router.post("/github-app/sync")
+async def manual_sync(db: AsyncSession = Depends(get_db)) -> dict:
+    try:
+        return await sync_all_installations(db)
+    except GitHubAppError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc

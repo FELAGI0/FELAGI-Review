@@ -1,10 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../shared/useAuthStore'
-import { fetchAppInstallUrl, fetchRepositories } from '../../shared/api/repos'
+import {
+  fetchAppInstallUrl,
+  fetchRepositories,
+  syncInstallations,
+} from '../../shared/api/repos'
 
 export default function ReposPage() {
   const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
   const { data: repos, isLoading, error } = useQuery({
     queryKey: ['repositories'],
     queryFn: fetchRepositories,
@@ -12,6 +17,10 @@ export default function ReposPage() {
   const { data: installUrl } = useQuery({
     queryKey: ['app-install-url'],
     queryFn: fetchAppInstallUrl,
+  })
+  const syncMutation = useMutation({
+    mutationFn: syncInstallations,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['repositories'] }),
   })
 
   return (
@@ -34,17 +43,35 @@ export default function ReposPage() {
       <main className="page">
         <div className="page-header">
           <h1>Repositories</h1>
-          {installUrl && (
-            <a
-              className="btn-primary"
-              href={installUrl}
-              target="_blank"
-              rel="noreferrer"
+          <div className="header-actions">
+            <button
+              className="btn-secondary"
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
             >
-              Connect GitHub
-            </a>
-          )}
+              {syncMutation.isPending ? 'Syncing...' : 'Sync now'}
+            </button>
+            {installUrl && (
+              <a
+                className="btn-primary"
+                href={installUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Connect GitHub
+              </a>
+            )}
+          </div>
         </div>
+        {syncMutation.isError && (
+          <div className="error-box">Sync failed</div>
+        )}
+        {syncMutation.isSuccess && (
+          <div className="success-box">
+            Synced {syncMutation.data.repositories} repositories from{' '}
+            {syncMutation.data.installations} installation(s)
+          </div>
+        )}
 
         {isLoading && <div className="spinner" />}
         {error && <div className="error-box">Failed to load repositories</div>}
