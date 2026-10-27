@@ -27,6 +27,8 @@ class PullRequest(Base):
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     repo_id: Mapped[UUID] = mapped_column(ForeignKey("repositories.id"))
     external_id: Mapped[int] = mapped_column(BigInteger)
+    github_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)
+    diff_url: Mapped[str | None] = mapped_column(String)
     number: Mapped[int] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String)
     description: Mapped[str | None] = mapped_column(Text)

@@ -61,7 +61,9 @@ def test_webhook_accepts_valid_signature(
         },
     )
     assert response.status_code == 200
-    assert response.json() == {"ok": True, "event": "pull_request"}
+    data = response.json()
+    assert data["ok"] is True
+    assert data["event"] == "pull_request"
 
 
 def test_webhook_installation_event(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -76,7 +78,10 @@ def test_webhook_installation_event(client: TestClient, monkeypatch: pytest.Monk
         },
     )
     assert response.status_code == 200
-    assert response.json() == {"ok": True, "event": "installation"}
+    data = response.json()
+    assert data["ok"] is True
+    assert data["event"] == "installation"
+    assert "repositories" in data
 
 
 def test_github_app_status_requires_auth(client: TestClient) -> None:

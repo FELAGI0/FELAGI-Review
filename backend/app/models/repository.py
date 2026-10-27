@@ -14,6 +14,8 @@ class Repository(Base):
     org_id: Mapped[UUID] = mapped_column(ForeignKey("organizations.id"))
     provider: Mapped[Provider] = mapped_column(Enum(Provider), default=Provider.github)
     external_id: Mapped[int] = mapped_column(BigInteger)
+    github_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)
+    installation_id: Mapped[int | None] = mapped_column(BigInteger)
     full_name: Mapped[str] = mapped_column(String)
     webhook_secret: Mapped[str | None] = mapped_column(String)
     access_token_encrypted: Mapped[str | None] = mapped_column(String)

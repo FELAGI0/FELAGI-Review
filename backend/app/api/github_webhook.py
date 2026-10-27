@@ -1,17 +1,23 @@
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import get_db
 from app.logging import logger
 from app.services.github_app import GitHubAppClient, WebhookSignatureError
+from app.services.github_sync import sync_installation_repos, sync_pull_request
 
 router = APIRouter()
 
-PR_ACTIONS = {"opened", "synchronize", "reopened"}
+PR_ACTIONS = {"opened", "synchronize", "reopened", "closed"}
 
 
 @router.post("/webhooks/github", status_code=200)
-async def github_webhook(request: Request) -> dict[str, Any]:
+async def github_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
     payload_body = await request.body()
     signature = request.headers.get("X-Hub-Signature-256")
     event = request.headers.get("X-GitHub-Event", "")
@@ -39,25 +45,14 @@ async def github_webhook(request: Request) -> dict[str, Any]:
         sender=(payload.get("sender") or {}).get("login"),
     )
 
-    if event == "pull_request" and action in PR_ACTIONS:
-        pr = payload.get("pull_request") or {}
-        repository = payload.get("repository") or {}
-        installation = payload.get("installation") or {}
-        logger.info(
-            "pr_event",
-            repo=repository.get("full_name"),
-            number=pr.get("number"),
-            state=pr.get("state"),
-            title=pr.get("title"),
-            installation_id=installation.get("id"),
-        )
-
     if event == "installation" and action == "created":
-        installation = payload.get("installation") or {}
-        logger.info(
-            "installation_created",
-            installation_id=installation.get("id"),
-            account=(installation.get("account") or {}).get("login"),
-        )
+        saved = await sync_installation_repos(db, payload)
+        return {"ok": True, "event": event, "repositories": len(saved)}
+
+    if event == "pull_request" and action in PR_ACTIONS:
+        pull_request = await sync_pull_request(db, payload)
+        if pull_request is None:
+            return {"ok": True, "event": event, "synced": False}
+        return {"ok": True, "event": event, "synced": True, "pr_number": pull_request.number}
 
     return {"ok": True, "event": event}
