@@ -8,8 +8,6 @@ services:
       POSTGRES_USER: felagi
       POSTGRES_PASSWORD: felagi
       POSTGRES_DB: felagi_review
-    ports:
-      - "55432:5432"
     volumes:
       - felagi_pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,8 +19,6 @@ services:
   felagi-redis:
     image: redis:7-alpine
     container_name: felagi-redis
-    ports:
-      - "6380:6379"
     volumes:
       - felagi_redis_data:/data
     healthcheck:

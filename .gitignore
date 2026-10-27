@@ -26,3 +26,5 @@ frontend/tsconfig.tsbuildinfo
 # secrets
 backend/secrets/
 *.pem
+.deploy/
+ngrok.zip
