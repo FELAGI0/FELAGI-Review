@@ -36,6 +36,8 @@ services:
     container_name: felagi-backend
     env_file:
       - .env
+    volumes:
+      - ./backend/secrets:/app/secrets:ro
     environment:
       FELAGI_APP_ENV: ${FELAGI_APP_ENV:-development}
       DATABASE_URL: postgresql+asyncpg://felagi:felagi@felagi-db:5432/felagi_review

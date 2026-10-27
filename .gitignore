@@ -22,3 +22,7 @@ Thumbs.db
 backend/*.egg-info/
 frontend/tsconfig.tsbuildinfo
 
+
+# secrets
+backend/secrets/
+*.pem

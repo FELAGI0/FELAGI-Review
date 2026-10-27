@@ -37,6 +37,20 @@ class Settings(BaseSettings):
     frontend_url: str = Field(
         default="http://localhost:5173", alias="FELAGI_APP_FRONTEND_URL"
     )
+
+    github_app_id: int | None = Field(default=None, alias="FELAGI_APP_GITHUB_APP_ID")
+    github_app_private_key_path: str | None = Field(
+        default=None, alias="FELAGI_APP_GITHUB_APP_PRIVATE_KEY_PATH"
+    )
+    github_app_webhook_secret: str | None = Field(
+        default=None, alias="FELAGI_APP_GITHUB_WEBHOOK_SECRET"
+    )
+    github_app_client_id: str | None = Field(
+        default=None, alias="FELAGI_APP_GITHUB_APP_CLIENT_ID"
+    )
+    github_app_client_secret: str | None = Field(
+        default=None, alias="FELAGI_APP_GITHUB_APP_CLIENT_SECRET"
+    )
     github_api_base_url: str = "https://api.github.com"
     github_oauth_authorize_url: str = "https://github.com/login/oauth/authorize"
     github_oauth_token_url: str = "https://github.com/login/oauth/access_token"

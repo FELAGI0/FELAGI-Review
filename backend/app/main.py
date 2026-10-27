@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, health
+from app.api import auth, github_app, github_webhook, health
 from app.core.config import settings
 from app.logging import logger
 
@@ -61,4 +61,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 app.include_router(auth.router, prefix=settings.api_v1_prefix, tags=["auth"])
+app.include_router(github_app.router, prefix=settings.api_v1_prefix, tags=["github-app"])
+app.include_router(
+    github_webhook.router, prefix=settings.api_v1_prefix, tags=["github-webhook"]
+)
 app.include_router(health.router, tags=["health"])
