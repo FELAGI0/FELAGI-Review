@@ -32,8 +32,8 @@ class RepositoryOut(BaseModel):
 class PullRequestOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
-    repo_id: str
+    id: UUID
+    repo_id: UUID
     github_id: int | None = None
     number: int
     title: str
