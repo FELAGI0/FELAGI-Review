@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { useAuthStore } from '../../shared/useAuthStore'
 import {
@@ -7,11 +7,19 @@ import {
   fetchPullRequestDiff,
   type DiffFile,
 } from '../../shared/api/repos'
-import DiffViewer from './DiffViewer'
+import {
+  createComment,
+  getComments,
+  type Comment,
+  type CreateCommentInput,
+} from '../../shared/api/comments'
+import DiffFileView from './DiffFileView'
+import CommentsPanel from '../comments/CommentsPanel'
 
 export default function PrDetailPage() {
   const { repoId, number } = useParams<{ repoId: string; number: string }>()
   const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
   const prNumber = number ? parseInt(number, 10) : null
   const [selectedFile, setSelectedFile] = useState<DiffFile | null>(null)
 
@@ -26,6 +34,26 @@ export default function PrDetailPage() {
     queryFn: () => fetchPullRequestDiff(repoId!, prNumber!),
     enabled: !!repoId && !!prNumber,
   })
+
+  const { data: threads } = useQuery({
+    queryKey: ['comments', pr?.id],
+    queryFn: () => getComments(pr!.id),
+    enabled: !!pr,
+  })
+
+  const invalidateComments = () =>
+    queryClient.invalidateQueries({ queryKey: ['comments', pr?.id] })
+
+  const inlineCommentMutation = useMutation({
+    mutationFn: ({ prId, input }: { prId: string; input: CreateCommentInput }) =>
+      createComment(prId, input),
+    onSuccess: invalidateComments,
+  })
+
+  const comments: Comment[] = (threads ?? []).flatMap((t) => [
+    t.root,
+    ...t.replies,
+  ])
 
   const activeFile = selectedFile ?? diff?.files[0] ?? null
 
@@ -67,7 +95,7 @@ export default function PrDetailPage() {
                 <span className="diff-del">-{pr.deletions}</span>
               </span>
               <span>{pr.files_changed} files</span>
-              {pr.github_id && pr.diff_url && (
+              {pr.diff_url && (
                 <a
                   href={pr.diff_url.replace(/\.diff$/, '')}
                   target="_blank"
@@ -108,7 +136,22 @@ export default function PrDetailPage() {
             </ul>
           </div>
           <div className="diff-pane">
-            {activeFile && <DiffViewer file={activeFile} />}
+            {activeFile && (
+              <DiffFileView
+                file={activeFile}
+                comments={comments}
+                onInlineSubmit={async (body, filePath, lineNumber) => {
+                  await inlineCommentMutation.mutateAsync({
+                    prId: pr!.id,
+                    input: {
+                      body,
+                      file_path: filePath,
+                      line_number: lineNumber,
+                    },
+                  })
+                }}
+              />
+            )}
             {!diffLoading && !activeFile && !diffError && (
               <div className="empty-state">
                 <p>No changed files.</p>
@@ -116,6 +159,8 @@ export default function PrDetailPage() {
             )}
           </div>
         </div>
+
+        {pr && <CommentsPanel prId={pr.id} />}
       </main>
     </div>
   )
