@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, comments, github_app, github_webhook, health, prs
+from app.api import auth, comments, github_app, github_webhook, health, prs, ws
 from app.core.config import settings
 from app.logging import logger
 
@@ -67,4 +67,5 @@ app.include_router(
 )
 app.include_router(prs.router, prefix=settings.api_v1_prefix, tags=["prs"])
 app.include_router(comments.router, prefix=settings.api_v1_prefix, tags=["comments"])
+app.include_router(ws.router, prefix=settings.api_v1_prefix)
 app.include_router(health.router, tags=["health"])

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { useAuthStore } from '../../shared/useAuthStore'
+import { usePrWebSocket, type WsMessage } from '../../shared/hooks/usePrWebSocket'
 import {
   fetchPullRequest,
   fetchPullRequestDiff,
@@ -41,14 +42,32 @@ export default function PrDetailPage() {
     enabled: !!pr,
   })
 
-  const invalidateComments = () =>
-    queryClient.invalidateQueries({ queryKey: ['comments', pr?.id] })
+  const invalidateComments = useCallback(() => {
+    if (pr?.id) {
+      queryClient.invalidateQueries({ queryKey: ['comments', pr.id] })
+    }
+  }, [queryClient, pr?.id])
 
   const inlineCommentMutation = useMutation({
     mutationFn: ({ prId, input }: { prId: string; input: CreateCommentInput }) =>
       createComment(prId, input),
     onSuccess: invalidateComments,
   })
+
+  const handleWsMessage = useCallback(
+    (message: WsMessage) => {
+      if (
+        message.type === 'comment_created' ||
+        message.type === 'comment_updated' ||
+        message.type === 'comment_deleted'
+      ) {
+        invalidateComments()
+      }
+    },
+    [invalidateComments],
+  )
+
+  usePrWebSocket(pr?.id ?? null, handleWsMessage)
 
   const comments: Comment[] = (threads ?? []).flatMap((t) => [
     t.root,

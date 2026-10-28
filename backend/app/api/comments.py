@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models import Comment, PullRequest
 from app.security import get_current_user
+from app.ws.manager import manager
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
@@ -151,7 +152,11 @@ async def create_comment(
     db.add(comment)
     await db.commit()
     await db.refresh(comment)
-    return CommentOut.model_validate(comment)
+    out = CommentOut.model_validate(comment)
+    await manager.broadcast(
+        pr_id, {"type": "comment_created", "payload": out.model_dump(mode="json")}
+    )
+    return out
 
 
 @router.patch("/comments/{comment_id}")
@@ -167,7 +172,11 @@ async def update_comment(
     comment.body = payload.body
     await db.commit()
     await db.refresh(comment)
-    return CommentOut.model_validate(comment)
+    out = CommentOut.model_validate(comment)
+    await manager.broadcast(
+        comment.pr_id, {"type": "comment_updated", "payload": out.model_dump(mode="json")}
+    )
+    return out
 
 
 @router.delete("/comments/{comment_id}", status_code=204)
@@ -186,8 +195,12 @@ async def delete_comment(
     if replies:
         for reply in replies:
             reply.parent_id = None
+    pr_id = comment.pr_id
     await db.delete(comment)
     await db.commit()
+    await manager.broadcast(
+        pr_id, {"type": "comment_deleted", "payload": {"id": str(comment_id)}}
+    )
 
 
 @router.post("/comments/{comment_id}/resolve")
@@ -199,4 +212,14 @@ async def resolve_comment(
     comment = await _get_comment_or_404(db, comment_id)
     comment.resolved = not comment.resolved
     await db.commit()
+    await manager.broadcast(
+        comment.pr_id,
+        {
+            "type": "comment_updated",
+            "payload": {
+                "id": str(comment.id),
+                "resolved": comment.resolved,
+            },
+        },
+    )
     return {"id": str(comment.id), "resolved": comment.resolved}

@@ -159,6 +159,35 @@ async def test_create_and_list_comment(
     assert threads[0]["replies"] == []
 
 
+async def test_websocket_broadcasts_comment_created(
+    client: TestClient, auth_headers: dict, test_pr
+) -> None:
+    from app.security import create_access_token as make_token
+
+    token = make_token(str(TEST_USER_ID))
+    with client.websocket_connect(
+        f"/api/ws/prs/{test_pr.id}?token={token}"
+    ) as ws:
+        create = client.post(
+            f"/api/prs/{test_pr.id}/comments",
+            json={"body": "ws test"},
+            headers=auth_headers,
+        )
+        assert create.status_code == 201
+        message = ws.receive_json()
+        assert message["type"] == "comment_created"
+        assert message["payload"]["body"] == "ws test"
+        assert message["payload"]["pr_id"] == str(test_pr.id)
+
+
+async def test_websocket_rejects_missing_token(
+    client: TestClient, test_pr
+) -> None:
+    with pytest.raises(Exception):
+        with client.websocket_connect(f"/api/ws/prs/{test_pr.id}"):
+            pass
+
+
 async def test_create_reply_and_thread_structure(
     client: TestClient, auth_headers: dict, test_pr
 ) -> None:
